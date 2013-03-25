@@ -1,0 +1,84 @@
+=begin
+require 'digest/md5'
+require 'cgi'
+require 'etc'
+require 'uri'
+require 'fileutils'
+require 'enumerator'
+require 'pathname'
+require 'puppet/util/diff'
+require 'puppet/util/checksums'
+require 'puppet/util/backups'
+require 'puppet/util/symbolic_file_mode'
+=end
+
+
+Puppet::Type.newtype(:s3file) do
+=begin
+  include Puppet::Util::MethodHelper
+  include Puppet::Util::Checksums
+  include Puppet::Util::Backups
+  include Puppet::Util::SymbolicFileMode
+=end
+
+  @doc = "Manages files locally and in s3.  This resource extends the file type."
+
+  ensurable do
+    defaultvalues
+    defaultto :present
+  end
+
+  def self.title_patterns
+    [ [ /^(.*?)\/*\Z/m, [ [ :path ] ] ] ]
+  end
+
+  newparam(:path) do
+    desc <<-'EOT'
+      The path to the file to manage. Must be fully qualified.
+
+      On Windows, the path should include the drive letter and should use `/` as
+      the separator character (rather than `\\`).
+    EOT
+    isnamevar
+
+    validate do |value|
+      unless Puppet::Util.absolute_path?(value)
+        fail Puppet::Error, "File paths must be fully qualified, not '#{value}'"
+      end
+    end
+
+    munge do |value|
+      ::File.expand_path(value)
+    end
+  end
+
+  newparam(:s3_path) do
+    desc 'Name of s3repo to get or put file.'
+    newvalues(/.*:.*/)
+  end
+
+  newparam(:operation) do
+    desc 'Do you want to get a file from s3 or put one.'
+  end
+
+  # Autorequire the file resource if it's being managed
+  autorequire(:file) do
+    self[:path]
+  end
+
+=begin
+  validate do
+    unless self[:line] and self[:path]
+      raise(Puppet::Error, "Both line and path are required attributes")
+    end
+
+    if (self[:match])
+      unless Regexp.new(self[:match]).match(self[:line])
+        raise(Puppet::Error, "When providing a 'match' parameter, the value must be a regex that matches against the value of your 'line' parameter")
+      end
+    end
+
+  end
+=end
+
+end
