@@ -1,6 +1,5 @@
 require 'rubygems'
 require 'aws-sdk'
-require 'pry'
 require 'digest/md5'
 
 class FileObj
@@ -36,7 +35,7 @@ class FileObj
   def write_data(src_data)
 
     if @is_s3_file == true
-      s3_file = @s3_conn.buckets[@s3_repo].objects[@s3_key]
+      s4_file = @s3_conn.buckets[@s3_repo].objects[@s3_key]
       s3_file.write(src_data)
       @md5 = get_md5
     else
@@ -81,9 +80,17 @@ Puppet::Type.type(:s3file).provide(:ruby) do
     #if resource[:operation] == 'get'
     #  File.exists?(@resource[:name])
 
+    # Get the data
     local_fileobj, remote_fileobj = get_data()
 
-    # if the files differ return false.
+
+    # if resource[:operation] = get
+    if resource[:operation] == 'get' && remote_fileobj.md5 == false
+      raise("error!  destination file not there!")
+    end
+
+
+      # if the files differ return false.
     return (local_fileobj.md5 == remote_fileobj.md5)
   end
 

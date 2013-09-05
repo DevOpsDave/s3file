@@ -63,8 +63,37 @@ Puppet::Type.newtype(:s3file) do
 
   # Autorequire the file resource if it's being managed
   autorequire(:file) do
-    self[:path]
+    req = []
+    path = Pathname.new(self[:path])
+    if !path.root?
+      # Start at our parent, to avoid autorequiring ourself
+      parents = path.parent.enum_for(:ascend)
+      if found = parents.find { |p| catalog.resource(:file, p.to_s) }
+        req << found.to_s
+      end
+    end
+    # if the resource is a link, make sure the target is created first
+    #req << self[:target] if self[:target]
+    req
   end
+
+  # Autorequire the owner and group of the file.
+  {:user => :owner, :group => :group}.each do |type, property|
+    autorequire(type) do
+      if @parameters.include?(property)
+        # The user/group property automatically converts to IDs
+        next unless should = @parameters[property].shouldorig
+        val = should[0]
+        if val.is_a?(Integer) or val =~ /^\d+$/
+          nil
+        else
+          val
+        end
+      end
+    end
+  end
+
+
 
 =begin
   validate do
@@ -82,3 +111,16 @@ Puppet::Type.newtype(:s3file) do
 =end
 
 end
+
+require 'puppet/type/file/checksum'
+require 'puppet/type/file/content' # can create the file
+require 'puppet/type/file/source' # can create the file
+require 'puppet/type/file/target' # creates a different type of file
+require 'puppet/type/file/ensure' # can create the file
+require 'puppet/type/file/owner'
+require 'puppet/type/file/group'
+require 'puppet/type/file/mode'
+require 'puppet/type/file/type'
+require 'puppet/type/file/selcontext' # SELinux file context
+require 'puppet/type/file/ctime'
+require 'puppet/type/file/mtime'
