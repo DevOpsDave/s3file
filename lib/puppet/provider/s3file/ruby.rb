@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'aws-sdk'
+require 'aws-sdk' if Puppet.features.aws?
 require 'digest/md5'
 
 class FileObj
@@ -71,7 +71,9 @@ class FileObj
 
 end
 
-Puppet::Type.type(:s3file).provide(:ruby) do
+Puppet::Type.type(:s3file).provide(:aws) do
+
+  confine :feature => :aws
 
   def exists?
     # Depending on resource[:operation]:
